@@ -139,7 +139,7 @@ class AccountModelCreateChildView(AccountModelCreateView):
         context = super(AccountModelCreateChildView, self).get_context_data()
         obj: AccountModel = self.get_object()
         context['page_title'] = _('Create Child Account')
-        context['header_title'] = _('Create Child Account - %s' % obj)
+        context['header_title'] = _(f'Create Child Account - {obj}')
         context['header_subtitle_icon'] = 'ic:twotone-account-tree'
         context['account'] = obj
         return context

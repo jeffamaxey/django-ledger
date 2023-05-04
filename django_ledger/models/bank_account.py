@@ -83,8 +83,7 @@ class BackAccountModelAbstract(CreateUpdateMixIn):
         ledger_model = LedgerModel.objects.create(
             entity=entity_model,
             posted=posted_ledger,
-            # pylint: disable=unsubscriptable-object
-            name=f'Bank Account {"***" + acc_number[-4:]}'
+            name=f'Bank Account ***{acc_number[-4:]}',
         )
         ledger_model.clean()
         self.ledger = ledger_model

@@ -78,13 +78,6 @@ def accruable_net_summary(queryset: QuerySet) -> dict:
     :param queryset: Accruable Objects Queryset.
     :return: A dictionary summarizing current net summary 0,30,60,90,90+ bill open amounts.
     """
-    nets = {
-        'net_0': 0,
-        'net_30': 0,
-        'net_60': 0,
-        'net_90': 0,
-        'net_90+': 0
-    }
     nets_collect = [{
         'net_due_group': b.net_due_group(),
         'amount_open': b.get_amount_open()
@@ -93,8 +86,13 @@ def accruable_net_summary(queryset: QuerySet) -> dict:
     nets_collect = {
         g: float(sum(b['amount_open'] for b in l)) for g, l in groupby(nets_collect, key=lambda b: b['net_due_group'])
     }
-    nets.update(nets_collect)
-    return nets
+    return {
+        'net_0': 0,
+        'net_30': 0,
+        'net_60': 0,
+        'net_90': 0,
+        'net_90+': 0,
+    } | nets_collect
 
 
 def get_end_date_from_session(entity_slug: str, request) -> date:
@@ -116,9 +114,7 @@ def prepare_context_by_unit(context: dict):
             try:
                 by_unit = context['request'].GET.get('by_unit')
                 by_unit = bool(int(by_unit))
-            except ValueError:
-                by_unit = False
-            except TypeError:
+            except (ValueError, TypeError):
                 by_unit = False
             context['by_unit'] = by_unit
         else:

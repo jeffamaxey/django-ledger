@@ -69,8 +69,7 @@ class EntityModelCreateView(LoginRequiredMixIn, CreateView):
         if default_coa:
             entity_model.populate_default_coa(activate_accounts=activate_accounts)
 
-        sample_data = form.cleaned_data.get('generate_sample_data')
-        if sample_data:
+        if sample_data := form.cleaned_data.get('generate_sample_data'):
             entity_generator = EntityDataGenerator(
                 entity_model=entity_model,
                 user_model=self.request.user,
@@ -129,10 +128,14 @@ class EntityDeleteView(LoginRequiredMixIn, DeleteView):
         if self.verify_descendants:
             c = entity_model.children.count()
             if c != 0:
-                add_message(request,
-                            level=ERROR,
-                            extra_tags='is-danger',
-                            message=_('Entity has %s children. Must delete children first.' % c))
+                add_message(
+                    request,
+                    level=ERROR,
+                    extra_tags='is-danger',
+                    message=_(
+                        f'Entity has {c} children. Must delete children first.'
+                    ),
+                )
                 return self.get(request, *args, **kwargs)
 
         ItemThroughModel.objects.for_entity(
@@ -178,8 +181,7 @@ class EntityModelDetailView(LoginRequiredMixIn,
 
     def get_redirect_url(self, *args, **kwargs):
         loc_date = localdate()
-        unit_slug = self.get_unit_slug()
-        if unit_slug:
+        if unit_slug := self.get_unit_slug():
             return reverse('django_ledger:unit-dashboard-month',
                            kwargs={
                                'entity_slug': self.kwargs['entity_slug'],
@@ -226,7 +228,7 @@ class FiscalYearEntityModelDashboardView(LoginRequiredMixIn,
         if unit_slug:
             KWARGS['unit_slug'] = unit_slug
 
-        url_pointer = 'entity' if not unit_slug else 'unit'
+        url_pointer = 'unit' if unit_slug else 'entity'
         context['pnl_chart_id'] = f'djl-entity-pnl-chart-{randint(10000, 99999)}'
         context['pnl_chart_endpoint'] = reverse(f'django_ledger:{url_pointer}-json-pnl',
                                                 kwargs=KWARGS)
@@ -299,8 +301,7 @@ class FiscalYearEntityModelBalanceSheetView(LoginRequiredMixIn,
         context = super(FiscalYearEntityModelBalanceSheetView, self).get_context_data(**kwargs)
         context['page_title'] = _('Balance Sheet') + ': ' + self.object.name
         context['header_title'] = context['page_title']
-        unit_slug = self.request.GET.get('unit')
-        if unit_slug:
+        if unit_slug := self.request.GET.get('unit'):
             context['unit_model'] = get_object_or_404(EntityUnitModel,
                                                       slug=unit_slug,
                                                       entity__slug__exact=self.kwargs['entity_slug'])
@@ -362,8 +363,7 @@ class FiscalYearEntityModelIncomeStatementView(LoginRequiredMixIn,
         context = super().get_context_data(**kwargs)
         context['page_title'] = _('Income Statement: ') + self.object.name
         context['header_title'] = _('Income Statement: ') + self.object.name
-        unit_slug = self.kwargs.get('unit_slug')
-        if unit_slug:
+        if unit_slug := self.kwargs.get('unit_slug'):
             context['unit_model'] = get_object_or_404(EntityUnitModel,
                                                       slug__exact=unit_slug,
                                                       entity__slug__exact=self.kwargs['entity_slug'])

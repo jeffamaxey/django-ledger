@@ -98,17 +98,17 @@ class PurchaseOrderModelUpdateForm(ModelForm):
         }
 
     def clean(self):
-        is_fulfilled = self.cleaned_data['fulfilled']
         new_status = self.cleaned_data['po_status']
 
         if 'fulfilled' in self.changed_data:
+            is_fulfilled = self.cleaned_data['fulfilled']
             if not is_fulfilled:
                 raise ValidationError(
-                    message=f'Cannot change status to un-fulfilled once fulfilled. Void instead.'
+                    message='Cannot change status to un-fulfilled once fulfilled. Void instead.'
                 )
             if new_status != PurchaseOrderModel.PO_STATUS_APPROVED:
                 raise ValidationError(
-                    message=f'Cannot fulfill a PO that has not been approved.'
+                    message='Cannot fulfill a PO that has not been approved.'
                 )
 
         if 'po_status' in self.changed_data:
@@ -153,7 +153,6 @@ class PurchaseOrderItemForm(ModelForm):
 
     def clean_po_item_status(self):
         po_item_status = self.cleaned_data['po_item_status']
-        po_item_model: ItemThroughModel = self.instance
         if 'po_item_status' in self.changed_data:
             po_model: PurchaseOrderModel = getattr(self, 'PO_MODEL')
             if po_model.po_status == po_model.PO_STATUS_APPROVED:
@@ -165,6 +164,7 @@ class PurchaseOrderItemForm(ModelForm):
                 ]):
                     raise ValidationError('Cannot assign not ordered status to a billed item. '
                                           'Void or delete bill first')
+            po_item_model: ItemThroughModel = self.instance
             if all([
                 po_item_status in [ItemThroughModel.STATUS_IN_TRANSIT, ItemThroughModel.STATUS_RECEIVED],
                 not po_item_model.bill_model_id

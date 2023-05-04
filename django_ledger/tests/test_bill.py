@@ -37,7 +37,7 @@ class BillModelTests(DjangoLedgerBaseTest):
         cash_account = account_qs.filter(role__in=[ASSET_CA_CASH]).first()
         prepaid_account = account_qs.filter(role__in=[ASSET_CA_PREPAID]).first()
         unearned_account = account_qs.filter(role__in=[LIABILITY_CL_DEFERRED_REVENUE]).first()
-        dt = self.get_random_date() if not date else date
+        dt = date if date else self.get_random_date()
 
         bill_model = BillModel()
         ledger_model, bill_model = bill_model.configure(
@@ -69,8 +69,7 @@ class BillModelTests(DjangoLedgerBaseTest):
         entity_model, bill_model = self.create_bill(amount=Decimal('500.00'))
 
         for path, kwargs in self.URL_PATTERNS.items():
-            url_kwargs = dict()
-            url_kwargs['entity_slug'] = entity_model.slug
+            url_kwargs = {'entity_slug': entity_model.slug}
             if 'bill_pk' in kwargs:
                 url_kwargs['bill_pk'] = bill_model.uuid
             if 'year' in kwargs:
@@ -307,7 +306,7 @@ class BillModelTests(DjangoLedgerBaseTest):
         self.login_client()
         today = localdate()
 
-        for i in range(5):
+        for _ in range(5):
             entity_model, bill_model = self.create_bill(amount=Decimal('0.00'), date=today)
             vendor_model: VendorModel = bill_model.vendor
             bill_detail_url = reverse('django_ledger:bill-detail',

@@ -18,8 +18,7 @@ class StagedTransactionModelForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        instance = getattr(self, 'instance', None)
-        if instance:
+        if instance := getattr(self, 'instance', None):
             if instance.earnings_account and instance.tx:
                 self.fields['earnings_account'].widget.attrs['disabled'] = True
                 self.fields['earnings_account'].widget.attrs['value'] = instance.earnings_account
@@ -27,7 +26,7 @@ class StagedTransactionModelForm(ModelForm):
                 self.fields['tx_import'].widget.attrs['value'] = True
             elif not instance.earnings_account:
                 self.fields['tx_import'].widget.attrs['disabled'] = True
-            elif instance.earnings_account and not instance.tx:
+            else:
                 self.fields['tx_import'].widget.attrs['disabled'] = False
 
     class Meta:

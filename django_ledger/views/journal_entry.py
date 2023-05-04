@@ -109,8 +109,7 @@ class JournalEntryUpdateView(LoginRequiredMixIn, UpdateView):
         if self.action_mark_as_unlocked:
             je_model.mark_as_unlocked(commit=True)
 
-        next_url = self.request.GET.get('next')
-        if next_url:
+        if next_url := self.request.GET.get('next'):
             return HttpResponseRedirect(next_url)
 
         return response

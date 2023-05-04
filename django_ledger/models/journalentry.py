@@ -123,21 +123,19 @@ class JournalEntryModelAbstract(NodeTreeMixIn, CreateUpdateMixIn):
         txs_idx = {
             i['tx_type']: i['tx_type_total'] for i in txs_qs
         }
-        balances = {
+        return {
             'credit': txs_idx.get('credit', Decimal('0.00')),
-            'debit': txs_idx.get('debit', Decimal('0.00'))
+            'debit': txs_idx.get('debit', Decimal('0.00')),
         }
-        return balances
 
     def je_is_valid(self):
         balances = self.get_balances()
         return balances['credit'] == balances['debit']
 
     def clean(self, verify_txs: bool = True):
-        check1 = 'Debits and credits do not match.'
-        if verify_txs:
-            if not self.je_is_valid():
-                raise ValidationError(check1)
+        if verify_txs and not self.je_is_valid():
+            check1 = 'Debits and credits do not match.'
+            raise ValidationError(check1)
 
     def mark_as_posted(self, commit: bool = False):
         if not self.posted:

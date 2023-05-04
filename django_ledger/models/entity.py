@@ -77,8 +77,7 @@ def inventory_adjustment(counted_qs, recorded_qs) -> defaultdict:
 
     for uid in item_ids:
 
-        count_data = counted_map.get(uid)
-        if count_data:
+        if count_data := counted_map.get(uid):
             avg_cost = count_data['value'] / count_data['count'] if count_data['count'] else Decimal('0.000')
 
             adjustment[uid]['counted'] = count_data['count']
@@ -89,8 +88,7 @@ def inventory_adjustment(counted_qs, recorded_qs) -> defaultdict:
             adjustment[uid]['value_diff'] += count_data['value']
             adjustment[uid]['avg_cost_diff'] += avg_cost
 
-        recorded_data = recorded_map.get(uid)
-        if recorded_data:
+        if recorded_data := recorded_map.get(uid):
             counted = recorded_data['count']
             avg_cost = recorded_data['value'] / counted if recorded_data['count'] else Decimal('0.000')
 
@@ -110,26 +108,30 @@ class EntityReportManager:
 
     def get_fy_start_month(self) -> int:
         fy = getattr(self, 'fy_start_month', None)
-        if not fy:
-            return 1
-        return fy
+        return fy if fy else 1
 
     def validate_quarter(self, quarter: int):
         if quarter not in self.VALID_QUARTERS:
             raise ValidationError(f'Specified quarter is not valid: {quarter}')
 
     def get_fy_start(self, year: int, fy_start_month: int = None) -> date:
-        fy_start_month = self.get_fy_start_month() if not fy_start_month else fy_start_month
+        fy_start_month = (
+            fy_start_month if fy_start_month else self.get_fy_start_month()
+        )
         return date(year, fy_start_month, 1)
 
     def get_fy_end(self, year: int, fy_start_month: int = None) -> date:
-        fy_start_month = self.get_fy_start_month() if not fy_start_month else fy_start_month
+        fy_start_month = (
+            fy_start_month if fy_start_month else self.get_fy_start_month()
+        )
         ye = year if fy_start_month == 1 else year + 1
         me = 12 if fy_start_month == 1 else fy_start_month - 1
         return date(ye, me, monthrange(ye, me)[1])
 
     def get_quarter_start(self, year: int, quarter: int, fy_start_month: int = None) -> date:
-        fy_start_month = self.get_fy_start_month() if not fy_start_month else fy_start_month
+        fy_start_month = (
+            fy_start_month if fy_start_month else self.get_fy_start_month()
+        )
         quarter_month_start = (quarter - 1) * 3 + fy_start_month
         year_start = year
         if quarter_month_start > 12:
@@ -138,7 +140,9 @@ class EntityReportManager:
         return date(year_start, quarter_month_start, 1)
 
     def get_quarter_end(self, year: int, quarter: int, fy_start_month: int = None) -> date:
-        fy_start_month = self.get_fy_start_month() if not fy_start_month else fy_start_month
+        fy_start_month = (
+            fy_start_month if fy_start_month else self.get_fy_start_month()
+        )
         quarter_month_end = quarter * 3 + fy_start_month - 1
         year_end = year
         if quarter_month_end > 12:
@@ -308,14 +312,11 @@ class EntityModelAbstract(NodeTreeMixIn,
         self.slug = entity_slug
 
     def recorded_inventory(self, user_model, queryset=None, as_values=True):
-        if not queryset:
-            # pylint: disable=no-member
-            recorded_qs = self.items.inventory(
-                entity_slug=self.slug,
-                user_model=user_model
-            )
-        else:
-            recorded_qs = queryset
+        recorded_qs = (
+            queryset
+            if queryset
+            else self.items.inventory(entity_slug=self.slug, user_model=user_model)
+        )
         if as_values:
             return recorded_qs.values(
                 'uuid', 'name', 'uom__name', 'inventory_received', 'inventory_received_value')
@@ -338,7 +339,7 @@ class EntityModelAbstract(NodeTreeMixIn,
 
         adj = inventory_adjustment(counted_qs, recorded_qs_values)
 
-        updated_items = list()
+        updated_items = []
         for (uuid, name, uom), i in adj.items():
             item_model: ItemModel = recorded_qs.get(uuid__exact=uuid)
             item_model.inventory_received = i['counted']
@@ -442,20 +443,20 @@ class EntityModelAbstract(NodeTreeMixIn,
                         f'Equity Account: {equity_account.__class__.__name__}'
             )
 
-        txs = list()
-        txs.append({
-            'account_id': cash_account_model.uuid,
-            'tx_type': 'debit',
-            'amount': amount,
-            'description': f'Sample data for {self.name}'
-        })
-        txs.append({
-            'account_id': equity_account_model.uuid,
-            'tx_type': 'credit',
-            'amount': amount,
-            'description': f'Sample data for {self.name}'
-        })
-
+        txs = [
+            {
+                'account_id': cash_account_model.uuid,
+                'tx_type': 'debit',
+                'amount': amount,
+                'description': f'Sample data for {self.name}',
+            },
+            {
+                'account_id': equity_account_model.uuid,
+                'tx_type': 'credit',
+                'amount': amount,
+                'description': f'Sample data for {self.name}',
+            },
+        ]
         # pylint: disable=no-member
         ledger = self.ledgermodel_set.create(
             name=ledger_name,
@@ -519,9 +520,9 @@ class EntityModel(EntityModelAbstract):
 def entitymodel_postsave(instance, **kwargs):
     if not getattr(instance, 'coa', None):
         ChartOfAccountModel.objects.create(
-            slug=instance.slug + '-coa',
-            name=instance.name + ' CoA',
-            entity=instance
+            slug=f'{instance.slug}-coa',
+            name=f'{instance.name} CoA',
+            entity=instance,
         )
         instance.ledgermodel_set.create(
             name=_(f'{instance.name} General Ledger'),

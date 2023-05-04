@@ -44,11 +44,10 @@ class BillModelListView(LoginRequiredMixIn, ArchiveIndexView):
         ).select_related('vendor').order_by('-updated')
 
     def get_allow_future(self):
-        allow_future = self.request.GET.get('allow_future')
-        if allow_future:
+        if allow_future := self.request.GET.get('allow_future'):
             try:
                 allow_future = int(allow_future)
-                if allow_future in (0, 1):
+                if allow_future in {0, 1}:
                     return bool(allow_future)
             except ValueError:
                 pass
@@ -81,14 +80,13 @@ class BillModelCreateView(LoginRequiredMixIn, CreateView):
         if self.for_purchase_order:
             po_pk = self.kwargs['po_pk']
             po_item_uuids_qry_param = self.request.GET.get('item_uuids')
-            if po_item_uuids_qry_param:
-                try:
-                    po_item_uuids = po_item_uuids_qry_param.split(',')
-                except:
-                    return HttpResponseBadRequest()
-            else:
+            if not po_item_uuids_qry_param:
                 return HttpResponseBadRequest()
 
+            try:
+                po_item_uuids = po_item_uuids_qry_param.split(',')
+            except:
+                return HttpResponseBadRequest()
             po_qs = PurchaseOrderModel.objects.for_entity(
                 entity_slug=self.kwargs['entity_slug'],
                 user_model=self.request.user
@@ -120,10 +118,11 @@ class BillModelCreateView(LoginRequiredMixIn, CreateView):
 
     def get_form(self, form_class=None):
         entity_slug = self.kwargs['entity_slug']
-        form = BillModelCreateForm(entity_slug=entity_slug,
-                                   user_model=self.request.user,
-                                   **self.get_form_kwargs())
-        return form
+        return BillModelCreateForm(
+            entity_slug=entity_slug,
+            user_model=self.request.user,
+            **self.get_form_kwargs()
+        )
 
     def form_valid(self, form):
         bill_model: BillModel = form.save(commit=False)
@@ -210,8 +209,8 @@ class BillModelUpdateView(LoginRequiredMixIn, UpdateView):
         self.item_through_qs = None
 
     def get_item_through_queryset(self):
-        bill_model: BillModel = self.object
         if not self.item_through_qs:
+            bill_model: BillModel = self.object
             self.item_through_qs = bill_model.itemthroughmodel_set.select_related(
                 'item_model', 'po_model', 'bill_model').order_by('-total_amount')
         return self.item_through_qs
@@ -232,9 +231,11 @@ class BillModelUpdateView(LoginRequiredMixIn, UpdateView):
 
     def get_form_class(self):
         bill_model: BillModel = self.object
-        if not bill_model.is_configured():
-            return BillModelConfigureForm
-        return BillModelUpdateForm
+        return (
+            BillModelUpdateForm
+            if bill_model.is_configured()
+            else BillModelConfigureForm
+        )
 
     def get_context_data(self, *, object_list=None, item_formset: BillItemFormset = None, **kwargs):
         context = super().get_context_data(object_list=object_list, **kwargs)
@@ -256,16 +257,20 @@ class BillModelUpdateView(LoginRequiredMixIn, UpdateView):
 
         ledger_model = bill_model.ledger
         if ledger_model.locked:
-            messages.add_message(self.request,
-                                 messages.ERROR,
-                                 f'Warning! This bill is locked. Must unlock before making any changes.',
-                                 extra_tags='is-danger')
+            messages.add_message(
+                self.request,
+                messages.ERROR,
+                'Warning! This bill is locked. Must unlock before making any changes.',
+                extra_tags='is-danger',
+            )
 
         if not ledger_model.posted:
-            messages.add_message(self.request,
-                                 messages.INFO,
-                                 f'This bill has not been posted. Must post to see ledger changes.',
-                                 extra_tags='is-info')
+            messages.add_message(
+                self.request,
+                messages.INFO,
+                'This bill has not been posted. Must post to see ledger changes.',
+                extra_tags='is-info',
+            )
 
         if not item_formset:
             _, aggregate_data = bill_model.get_itemthrough_data(

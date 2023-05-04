@@ -35,7 +35,7 @@ def generate_po_number(length: int = 10, prefix: bool = True) -> str:
     """
     po_number = ''.join(choices(PO_NUMBER_CHARS, k=length))
     if prefix:
-        po_number = 'PO-' + po_number
+        po_number = f'PO-{po_number}'
     return po_number
 
 
@@ -135,8 +135,8 @@ class PurchaseOrderModelAbstract(CreateUpdateMixIn,
             self.fulfilled = True
         if self.fulfilled:
             self.po_amount_received = self.po_amount
-        if self.fulfilled and not self.fulfillment_date:
-            self.fulfillment_date = localdate()
+            if not self.fulfillment_date:
+                self.fulfillment_date = localdate()
 
     def get_po_item_data(self, queryset: QuerySet = None) -> Tuple:
         if not queryset:

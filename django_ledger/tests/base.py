@@ -71,7 +71,7 @@ class DjangoLedgerBaseTest(TestCase):
             '11',
             '12'
         ]
-        cls.TEST_DATA = list()
+        cls.TEST_DATA = []
         cls.CAPITAL_CONTRIBUTION = Decimal('50000.00')
         cls.ENTITY_MODEL_QUERYSET = None
 

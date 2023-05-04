@@ -44,8 +44,7 @@ class SuccessUrlNextMixIn:
         return self.request.GET.get('next') is not None
 
     def get_success_url(self):
-        next = self.request.GET.get('next')
-        if next:
+        if next := self.request.GET.get('next'):
             return next
         # elif self.kwargs.get('entity_slug'):
         #     return reverse('django_ledger:entity-dashboard',
@@ -120,8 +119,7 @@ class QuarterlyReportMixIn(YearMixin, EntityReportManager):
                     quarter = self.request.GET[self.quarter_url_kwarg]
                 except KeyError:
                     raise Http404(_("No quarter specified"))
-        quarter = self.parse_quarter(quarter)
-        return quarter
+        return self.parse_quarter(quarter)
 
     def get_from_date(self, quarter: int = None, year: int = None, fy_start: int = None, **kwargs) -> date:
         return self.get_quarter_start_date(quarter, year, fy_start)
@@ -209,14 +207,10 @@ class MonthlyReportMixIn(YearlyReportMixIn, MonthMixin):
         return date(year=year, month=month, day=last_day)
 
     def get_next_month(self, month) -> int:
-        if month != 12:
-            return month + 1
-        return 1
+        return month + 1 if month != 12 else 1
 
     def get_previous_month(self, month) -> int:
-        if month != 1:
-            return month - 1
-        return 12
+        return month - 1 if month != 1 else 12
 
     def get_context_data(self, **kwargs):
         context = super(MonthlyReportMixIn, self).get_context_data(**kwargs)
@@ -296,10 +290,10 @@ class FromToDatesMixIn:
     def parse_date_from_query_param(self, query_param: str):
         param_date = self.request.GET.get(query_param)
         if param_date:
-            parsed_date = parse_date(param_date)
-            if not parsed_date:
+            if parsed_date := parse_date(param_date):
+                param_date = parsed_date
+            else:
                 raise Http404(_(f'Invalid {query_param} {param_date} provided'))
-            param_date = parsed_date
         return param_date
 
 
@@ -343,23 +337,27 @@ class EntityDigestMixIn:
 
         unit_slug = self.get_unit_slug()
 
-        qs_all, digest = entity_model.digest(user_model=self.request.user,
-                                             to_date=end_date,
-                                             unit_slug=unit_slug,
-                                             by_period=True if by_period else False,
-                                             process_ratios=True,
-                                             process_roles=True,
-                                             process_groups=True)
+        qs_all, digest = entity_model.digest(
+            user_model=self.request.user,
+            to_date=end_date,
+            unit_slug=unit_slug,
+            by_period=bool(by_period),
+            process_ratios=True,
+            process_roles=True,
+            process_groups=True,
+        )
 
-        qs_equity, equity_digest = entity_model.digest(user_model=self.request.user,
-                                                       digest_name='equity_digest',
-                                                       to_date=end_date,
-                                                       from_date=from_date,
-                                                       unit_slug=unit_slug,
-                                                       by_period=True if by_period else False,
-                                                       process_ratios=False,
-                                                       process_roles=False,
-                                                       process_groups=True)
+        qs_equity, equity_digest = entity_model.digest(
+            user_model=self.request.user,
+            digest_name='equity_digest',
+            to_date=end_date,
+            from_date=from_date,
+            unit_slug=unit_slug,
+            by_period=bool(by_period),
+            process_ratios=False,
+            process_roles=False,
+            process_groups=True,
+        )
         context.update(digest)
         context.update(equity_digest)
         context['date_filter'] = end_date
@@ -378,8 +376,8 @@ class UnpaidElementsMixIn:
 
     def get_unpaid_invoices_qs(self, context, from_date=None, to_date=None):
         if self.FETCH_UNPAID_INVOICES:
-            from_date = context['from_date'] if not from_date else from_date
-            to_date = context['to_date'] if not to_date else to_date
+            from_date = from_date if from_date else context['from_date']
+            to_date = to_date if to_date else context['to_date']
 
             qs = InvoiceModel.objects.for_entity(
                 user_model=self.request.user,
@@ -390,16 +388,15 @@ class UnpaidElementsMixIn:
                 Q(paid=False)
             ).select_related('customer').order_by('due_date')
 
-            unit_slug = self.get_unit_slug()
-            if unit_slug:
+            if unit_slug := self.get_unit_slug():
                 qs = qs.filter(ledger__journal_entries__entity_unit__slug__exact=unit_slug)
 
             return qs
 
     def get_unpaid_bills_qs(self, context, from_date=None, to_date=None):
         if self.FETCH_UNPAID_BILLS:
-            from_date = context['from_date'] if not from_date else from_date
-            to_date = context['to_date'] if not to_date else to_date
+            from_date = from_date if from_date else context['from_date']
+            to_date = to_date if to_date else context['to_date']
 
             qs = BillModel.objects.for_entity(
                 user_model=self.request.user,
@@ -410,8 +407,7 @@ class UnpaidElementsMixIn:
                 Q(paid=False)
             ).select_related('vendor').order_by('due_date')
 
-            unit_slug = self.get_unit_slug()
-            if unit_slug:
+            if unit_slug := self.get_unit_slug():
                 qs = qs.filter(ledger__journal_entries__entity_unit__slug__exact=unit_slug)
 
             return qs

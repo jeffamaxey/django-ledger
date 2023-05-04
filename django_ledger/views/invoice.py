@@ -66,11 +66,11 @@ class InvoiceModelCreateView(LoginRequiredMixIn, CreateView):
 
     def get_form(self, form_class=None):
         entity_slug = self.kwargs['entity_slug']
-        form = InvoiceModelCreateForm(
+        return InvoiceModelCreateForm(
             entity_slug=entity_slug,
             user_model=self.request.user,
-            **self.get_form_kwargs())
-        return form
+            **self.get_form_kwargs()
+        )
 
     def form_valid(self, form):
         invoice_model: InvoiceModel = form.instance
@@ -127,16 +127,20 @@ class InvoiceModelUpdateView(LoginRequiredMixIn, UpdateView):
         ledger_model: LedgerModel = self.object.ledger
 
         if ledger_model.locked and not invoice_model.paid:
-            messages.add_message(self.request,
-                                 messages.ERROR,
-                                 f'Warning! This Invoice is Locked. Must unlock before making any changes.',
-                                 extra_tags='is-danger')
+            messages.add_message(
+                self.request,
+                messages.ERROR,
+                'Warning! This Invoice is Locked. Must unlock before making any changes.',
+                extra_tags='is-danger',
+            )
 
         if not ledger_model.posted:
-            messages.add_message(self.request,
-                                 messages.INFO,
-                                 f'This Invoice has not been posted. Must post to see ledger changes.',
-                                 extra_tags='is-info')
+            messages.add_message(
+                self.request,
+                messages.INFO,
+                'This Invoice has not been posted. Must post to see ledger changes.',
+                extra_tags='is-info',
+            )
 
         if not item_formset:
             invoice_item_qs = invoice_model.itemthroughmodel_set.all().select_related('item_model')
@@ -212,7 +216,13 @@ class InvoiceModelUpdateView(LoginRequiredMixIn, UpdateView):
             return HttpResponseRedirect(redirect_url)
 
         if self.action_lock_ledger:
-            if not ledger_model.locked:
+            if ledger_model.locked:
+                messages.add_message(self.request,
+                                     level=messages.WARNING,
+                                     message=f'{invoice_model.invoice_number} already locked.',
+                                     extra_tags='is-warning')
+
+            else:
                 ledger_model.locked = True
                 ledger_model.save(update_fields=['locked', 'updated'])
                 messages.add_message(self.request,
@@ -225,12 +235,6 @@ class InvoiceModelUpdateView(LoginRequiredMixIn, UpdateView):
                                                         'entity_slug': entity_slug,
                                                         'invoice_pk': invoice_pk
                                                     }))
-
-            else:
-                messages.add_message(self.request,
-                                     level=messages.WARNING,
-                                     message=f'{invoice_model.invoice_number} already locked.',
-                                     extra_tags='is-warning')
 
         if self.action_unlock_ledger:
             if ledger_model.locked:

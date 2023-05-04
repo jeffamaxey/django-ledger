@@ -531,16 +531,15 @@ class ItemThroughModelAbstract(NodeTreeMixIn, CreateUpdateMixIn):
 
         total_amount = uc * qty
 
-        if self.po_total_amount > 0:
-            if total_amount > self.po_total_amount:
-                # checks if difference is within tolerance...
-                diff = total_amount - self.po_total_amount
-                if diff > DJANGO_LEDGER_TRANSACTION_MAX_TOLERANCE:
-                    raise ValidationError(
-                        f'Difference between PO Amount {self.po_total_amount} and Bill {total_amount} '
-                        f'exceeds tolerance of {DJANGO_LEDGER_TRANSACTION_MAX_TOLERANCE}')
-                self.total_amount = self.po_total_amount
-                return
+        if self.po_total_amount > 0 and total_amount > self.po_total_amount:
+            # checks if difference is within tolerance...
+            diff = total_amount - self.po_total_amount
+            if diff > DJANGO_LEDGER_TRANSACTION_MAX_TOLERANCE:
+                raise ValidationError(
+                    f'Difference between PO Amount {self.po_total_amount} and Bill {total_amount} '
+                    f'exceeds tolerance of {DJANGO_LEDGER_TRANSACTION_MAX_TOLERANCE}')
+            self.total_amount = self.po_total_amount
+            return
         self.total_amount = total_amount
 
     def clean_po_total_amount(self):

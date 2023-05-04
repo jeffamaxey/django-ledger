@@ -32,17 +32,17 @@ def digest_staged_txs(cleaned_staged_tx: dict, cash_account: AccountModel):
         {
             'account_id': cash_account.uuid,
             'amount': abs(tx_amt),
-            'tx_type': 'debit' if not reverse_tx else 'credit',
+            'tx_type': 'credit' if reverse_tx else 'debit',
             'description': cleaned_staged_tx['name'],
-            'staged_tx_model': cleaned_staged_tx['uuid']
+            'staged_tx_model': cleaned_staged_tx['uuid'],
         },
         {
             'account_id': cleaned_staged_tx['earnings_account'].uuid,
             'amount': abs(tx_amt),
-            'tx_type': 'credit' if not reverse_tx else 'debit',
+            'tx_type': 'debit' if reverse_tx else 'credit',
             'description': cleaned_staged_tx['name'],
-            'staged_tx_model': cleaned_staged_tx['uuid']
-        }
+            'staged_tx_model': cleaned_staged_tx['uuid'],
+        },
     ]
 
 
@@ -97,13 +97,9 @@ class DataImportOFXFileView(LoginRequiredMixIn, FormView):
             a['account_number'] for a in ba_values
         ]
 
-        # determines if Bank Account models need to be created...
-        to_create = [
+        if to_create := [
             a for a in accs if a['account_number'] not in existing_accounts_list
-        ]
-
-        if len(to_create) > 0:
-
+        ]:
             entity_model = EntityModel.objects.for_user(
                 user_model=self.request.user
             ).get(slug__exact=self.kwargs['entity_slug'])
@@ -133,7 +129,7 @@ class DataImportOFXFileView(LoginRequiredMixIn, FormView):
 
         for ba in bank_accounts:
             import_job = ba.ledger.importjobmodel_set.create(
-                description='OFX Import for Account *' + ba.account_number[-4:]
+                description=f'OFX Import for Account *{ba.account_number[-4:]}'
             )
             txs = ofx.get_account_txs(account=ba.account_number)
             txs_models = [
@@ -219,15 +215,11 @@ class DataImportJobDetailView(LoginRequiredMixIn, DetailView):
                                                     entity_slug=kwargs['entity_slug'])
         if txs_formset.is_valid():
             txs_formset.save()
-            staged_to_import = [
-                tx for tx in txs_formset.cleaned_data if all([
-                    tx['earnings_account'],
-                    tx['tx_import'],
-                    not tx['tx']
-                ])
-            ]
-
-            if len(staged_to_import) > 0:
+            if staged_to_import := [
+                tx
+                for tx in txs_formset.cleaned_data
+                if all([tx['earnings_account'], tx['tx_import'], not tx['tx']])
+            ]:
                 job_model = ImportJobModel.objects.for_entity(
                     entity_slug=self.kwargs['entity_slug'],
                     user_model=self.request.user

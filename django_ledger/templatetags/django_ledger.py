@@ -63,16 +63,12 @@ def percentage(value):
 
 @register.filter(name='reverse_sing')
 def reverse_sign(value: float):
-    if value:
-        return -value
-    return 0
+    return -value if value else 0
 
 
 @register.filter(name='last_four')
 def last_four(value: str):
-    if value:
-        return '*' + value[-4:]
-    return ''
+    return f'*{value[-4:]}' if value else ''
 
 
 @register.inclusion_tag('django_ledger/tags/icon.html')
@@ -330,9 +326,7 @@ def session_entity_name(context, request=None):
     session = request.session
     try:
         entity_name = session.get(session_key)['entity_name']
-    except KeyError:
-        entity_name = 'Django Ledger'
-    except TypeError:
+    except (KeyError, TypeError):
         entity_name = 'Django Ledger'
     return entity_name
 
@@ -341,8 +335,7 @@ def session_entity_name(context, request=None):
 @register.inclusion_tag('django_ledger/tags/activity_form.html', takes_context=True)
 def activity_filter(context):
     request = context['request']
-    activity = request.GET.get('activity')
-    if activity:
+    if activity := request.GET.get('activity'):
         activity_form = ActivityFilterForm(initial={
             'activity': activity
         })
@@ -366,7 +359,7 @@ def date_picker(context, nav_url=None, date_picker_id=None):
         date_picker_id = f'djl-datepicker-{randint(10000, 99999)}'
 
     if 'date_picker_ids' not in context:
-        context['date_picker_ids'] = list()
+        context['date_picker_ids'] = []
     context['date_picker_ids'].append(date_picker_id)
 
     date_navigation_url = nav_url if nav_url else context.get('date_navigation_url')
@@ -412,26 +405,25 @@ def fin_ratio_max_value(ratio: str):
 
 @register.filter
 def fin_ratio_threshold_class(value, ratio):
-    if value:
-        params = DJANGO_LEDGER_FINANCIAL_ANALYSIS['ratios'][ratio]
-        ranges = params['ranges']
+    if not value:
+        return
+    params = DJANGO_LEDGER_FINANCIAL_ANALYSIS['ratios'][ratio]
+    ranges = params['ranges']
 
-        if params['good_incremental']:
-            if value <= ranges['critical']:
-                return 'is-danger'
-            elif value <= ranges['warning']:
-                return 'is-warning'
-            elif value <= ranges['watch']:
-                return 'is-primary'
-            return 'is-success'
-        else:
-            if value >= ranges['critical']:
-                return 'is-danger'
-            elif value >= ranges['warning']:
-                return 'is-warning'
-            elif value >= ranges['watch']:
-                return 'is-primary'
-            return 'is-success'
+    if params['good_incremental']:
+        if value <= ranges['critical']:
+            return 'is-danger'
+        elif value <= ranges['warning']:
+            return 'is-warning'
+        elif value <= ranges['watch']:
+            return 'is-primary'
+    elif value >= ranges['critical']:
+        return 'is-danger'
+    elif value >= ranges['warning']:
+        return 'is-warning'
+    elif value >= ranges['watch']:
+        return 'is-primary'
+    return 'is-success'
 
 
 @register.inclusion_tag('django_ledger/tags/feedback_button.html', takes_context=True)
@@ -455,10 +447,8 @@ def feedback_button(context, button_size_class: str = 'is-small', color_class: s
 
 @register.inclusion_tag('django_ledger/tags/period_navigator.html', takes_context=True)
 def period_navigation(context, base_url: str):
-    KWARGS = dict()
     entity_slug = context['view'].kwargs['entity_slug']
-    KWARGS['entity_slug'] = entity_slug
-
+    KWARGS = {'entity_slug': entity_slug}
     if context['view'].kwargs.get('ledger_pk'):
         KWARGS['ledger_pk'] = context['view'].kwargs.get('ledger_pk')
 
@@ -468,9 +458,7 @@ def period_navigation(context, base_url: str):
     if context['view'].kwargs.get('unit_slug'):
         KWARGS['unit_slug'] = context['view'].kwargs.get('unit_slug')
 
-    ctx = dict()
-    ctx['year'] = context['year']
-    ctx['has_year'] = context.get('has_year')
+    ctx = {'year': context['year'], 'has_year': context.get('has_year')}
     ctx['has_quarter'] = context.get('has_quarter')
     ctx['has_month'] = context.get('has_month')
     ctx['has_date'] = context.get('has_date')
@@ -502,7 +490,7 @@ def period_navigation(context, base_url: str):
     ctx['current_month_url'] = reverse(f'django_ledger:{base_url}-month',
                                        kwargs=KWARGS_CURRENT_MONTH)
 
-    quarter_urls = list()
+    quarter_urls = []
     ctx['quarter'] = context.get('quarter')
     for Q in range(1, 5):
         KWARGS['quarter'] = Q
@@ -514,7 +502,7 @@ def period_navigation(context, base_url: str):
     del KWARGS['quarter']
     ctx['quarter_urls'] = quarter_urls
 
-    month_urls = list()
+    month_urls = []
     ctx['month'] = context.get('month')
     for M in range(1, 13):
         KWARGS['month'] = M
@@ -526,7 +514,7 @@ def period_navigation(context, base_url: str):
     ctx['month_urls'] = month_urls
     ctx['from_date'] = context['from_date']
     ctx['to_date'] = context['to_date']
-    ctx.update(KWARGS)
+    ctx |= KWARGS
 
     ctx['date_navigation_url'] = context.get('date_navigation_url')
 
@@ -537,8 +525,7 @@ def period_navigation(context, base_url: str):
 def navigation_menu(context, style):
     ENTITY_SLUG = context['view'].kwargs.get('entity_slug')
 
-    ctx = dict()
-    ctx['style'] = style
+    ctx = {'style': style}
     if ENTITY_SLUG:
         ctx['entity_slug'] = ENTITY_SLUG
         nav_menu_links = [
@@ -751,5 +738,5 @@ def inventory_table(context, queryset):
         'entity_slug': context['view'].kwargs['entity_slug'],
         'inventory_list': queryset
     }
-    ctx.update(queryset.aggregate(inventory_total_value=Sum('total_value')))
+    ctx |= queryset.aggregate(inventory_total_value=Sum('total_value'))
     return ctx

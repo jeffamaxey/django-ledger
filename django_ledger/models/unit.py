@@ -25,8 +25,7 @@ ENTITY_UNIT_RANDOM_SLUG_SUFFIX = ascii_lowercase + digits
 def create_entity_unit_slug(name):
     slug = slugify(name)
     suffix = ''.join(choices(ENTITY_UNIT_RANDOM_SLUG_SUFFIX, k=5))
-    unit_slug = f'{slug}-{suffix}'
-    return unit_slug
+    return f'{slug}-{suffix}'
 
 
 class EntityUnitModelManager(models.Manager):

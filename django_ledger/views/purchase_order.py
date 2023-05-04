@@ -40,11 +40,10 @@ class PurchaseOrderModelListView(LoginRequiredMixIn, ArchiveIndexView):
         ).order_by('-po_date')
 
     def get_allow_future(self):
-        allow_future = self.request.GET.get('allow_future')
-        if allow_future:
+        if allow_future := self.request.GET.get('allow_future'):
             try:
                 allow_future = int(allow_future)
-                if allow_future in (0, 1):
+                if allow_future in {0, 1}:
                     return bool(allow_future)
             except ValueError:
                 pass
@@ -79,10 +78,11 @@ class PurchaseOrderModelCreateView(LoginRequiredMixIn, CreateView):
 
     def get_form(self, form_class=None):
         entity_slug = self.kwargs['entity_slug']
-        form = PurchaseOrderModelCreateForm(entity_slug=entity_slug,
-                                            user_model=self.request.user,
-                                            **self.get_form_kwargs())
-        return form
+        return PurchaseOrderModelCreateForm(
+            entity_slug=entity_slug,
+            user_model=self.request.user,
+            **self.get_form_kwargs()
+        )
 
     def form_valid(self, form):
         po_model: PurchaseOrderModel = form.save(commit=False)
@@ -143,47 +143,50 @@ class PurchaseOrderModelUpdateView(LoginRequiredMixIn, UpdateView):
 
             context = self.get_context_data(item_formset=po_item_formset)
 
-            if po_item_formset.is_valid():
-                if po_item_formset.has_changed():
-                    po_items = po_item_formset.save(commit=False)
-                    all_received = all([
-                        i['po_item_status'] == ItemThroughModel.STATUS_RECEIVED
-                        for i in po_item_formset.cleaned_data if i
-                    ])
+            if not po_item_formset.is_valid():
+                return self.render_to_response(context)
+            if po_item_formset.has_changed():
+                po_items = po_item_formset.save(commit=False)
+                all_received = all(
+                    i['po_item_status'] == ItemThroughModel.STATUS_RECEIVED
+                    for i in po_item_formset.cleaned_data
+                    if i
+                )
 
-                    for f in po_item_formset.forms:
-                        i: ItemThroughModel = f.instance
-                        if i:
-                            if all([
-                                i.po_item_status in [
-                                    ItemThroughModel.STATUS_RECEIVED,
-                                    ItemThroughModel.STATUS_IN_TRANSIT
-                                ],
-                                i.bill_model is None
-                            ]):
-                                messages.add_message(
-                                    request=self.request,
-                                    level=messages.ERROR,
-                                    message=f'Item {i.item_model.__str__()} must be billed'
-                                            f' before {i.get_po_item_status_display()}...',
-                                    extra_tags='is-danger')
-                                return self.render_to_response(context)
+                for f in po_item_formset.forms:
+                    if i := f.instance:
+                        if all([
+                            i.po_item_status in [
+                                ItemThroughModel.STATUS_RECEIVED,
+                                ItemThroughModel.STATUS_IN_TRANSIT
+                            ],
+                            i.bill_model is None
+                        ]):
+                            messages.add_message(
+                                request=self.request,
+                                level=messages.ERROR,
+                                message=f'Item {i.item_model.__str__()} must be billed'
+                                        f' before {i.get_po_item_status_display()}...',
+                                extra_tags='is-danger')
+                            return self.render_to_response(context)
 
-                    if all_received and po_model.fulfillment_date:
-
-                        all_bills_paid = all([
-                            f.instance.bill_model.paid_date for f in po_item_formset.forms
-                        ])
+                if all_received:
+                    if po_model.fulfillment_date:
+                        all_bills_paid = all(
+                            f.instance.bill_model.paid_date
+                            for f in po_item_formset.forms
+                        )
 
                         if not all_bills_paid:
                             messages.add_message(
                                 request=self.request,
                                 level=messages.ERROR,
-                                message=f'All Bills must be paid before PO being fulfilled..',
-                                extra_tags='is-danger')
+                                message='All Bills must be paid before PO being fulfilled..',
+                                extra_tags='is-danger',
+                            )
                             return self.render_to_response(context)
 
-                    elif all_received and not po_model.fulfillment_date:
+                    else:
                         po_model.fulfillment_date = localdate()
                         po_model.fulfilled = True
                         po_model.clean()
@@ -193,34 +196,32 @@ class PurchaseOrderModelUpdateView(LoginRequiredMixIn, UpdateView):
                             'updated'
                         ])
 
-                    create_bill_uuids = [
-                        str(i['uuid'].uuid) for i in po_item_formset.cleaned_data if i and i['create_bill'] is True
-                    ]
+                if create_bill_uuids := [
+                    str(i['uuid'].uuid)
+                    for i in po_item_formset.cleaned_data
+                    if i and i['create_bill'] is True
+                ]:
+                    item_uuids = ','.join(create_bill_uuids)
+                    redirect_url = reverse(
+                        'django_ledger:bill-create-po',
+                        kwargs={
+                            'entity_slug': self.kwargs['entity_slug'],
+                            'po_pk': po_model.uuid,
+                        }
+                    )
+                    redirect_url += f'?item_uuids={item_uuids}'
+                    return HttpResponseRedirect(redirect_url)
 
-                    if create_bill_uuids:
-                        item_uuids = ','.join(create_bill_uuids)
-                        redirect_url = reverse(
-                            'django_ledger:bill-create-po',
-                            kwargs={
-                                'entity_slug': self.kwargs['entity_slug'],
-                                'po_pk': po_model.uuid,
-                            }
-                        )
-                        redirect_url += f'?item_uuids={item_uuids}'
-                        return HttpResponseRedirect(redirect_url)
+                for item in po_items:
+                    if not item.po_model:
+                        item.po_model = po_model
+                po_item_formset.save()
+                po_model.update_po_state()
+                po_model.clean()
+                po_model.save(update_fields=['po_amount',
+                                             'po_amount_received',
+                                             'updated'])
 
-                    for item in po_items:
-                        if not item.po_model:
-                            item.po_model = po_model
-                    po_item_formset.save()
-                    po_model.update_po_state()
-                    po_model.clean()
-                    po_model.save(update_fields=['po_amount',
-                                                 'po_amount_received',
-                                                 'updated'])
-
-            else:
-                return self.render_to_response(context)
         elif self.mark_as_fulfilled:
             po_model.mark_as_fulfilled(commit=True, date=localdate())
         # fixme: the super call needs to be executed first...?
@@ -299,7 +300,7 @@ class PurchaseOrderModelUpdateView(LoginRequiredMixIn, UpdateView):
 
             if 'fulfilled' in form.changed_data:
 
-                if not all([i.bill_model for i in po_items_qs]):
+                if not all(i.bill_model for i in po_items_qs):
                     messages.add_message(self.request,
                                          messages.ERROR,
                                          f'All PO items must be billed before marking'
@@ -308,7 +309,7 @@ class PurchaseOrderModelUpdateView(LoginRequiredMixIn, UpdateView):
                     return self.get(self.request)
 
                 else:
-                    if not all([i.bill_model.paid for i in po_items_qs]):
+                    if not all(i.bill_model.paid for i in po_items_qs):
                         messages.add_message(self.request,
                                              messages.SUCCESS,
                                              f'All bills must be paid before marking'

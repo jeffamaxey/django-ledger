@@ -198,25 +198,19 @@ class LedgerPlugInMixIn(models.Model):
     def get_progress(self):
         if self.accrue:
             return self.progress
-        if not self.amount_due:
-            return 0
-        return (self.amount_paid or 0) / self.amount_due
+        return (self.amount_paid or 0) / self.amount_due if self.amount_due else 0
 
     def get_progress_percent(self):
         return round(self.get_progress() * 100, 2)
 
     def get_amount_cash(self):
-        if self.IS_DEBIT_BALANCE:
-            return self.amount_paid
-        elif not self.IS_DEBIT_BALANCE:
-            return -self.amount_paid
+        return self.amount_paid if self.IS_DEBIT_BALANCE else -self.amount_paid
 
     def get_amount_earned(self):
-        if self.accrue:
-            amount_due = self.amount_due or 0
-            return self.get_progress() * amount_due
-        else:
+        if not self.accrue:
             return self.amount_paid or 0
+        amount_due = self.amount_due or 0
+        return self.get_progress() * amount_due
 
     def get_amount_prepaid(self):
         payments = self.amount_paid or 0
@@ -242,13 +236,11 @@ class LedgerPlugInMixIn(models.Model):
         return 0
 
     def get_amount_open(self):
+        amount_due = self.amount_due or 0
         if self.accrue:
-            amount_due = self.amount_due or 0
             return amount_due - self.get_amount_earned()
-        else:
-            amount_due = self.amount_due or 0
-            payments = self.amount_paid or 0
-            return amount_due - payments
+        payments = self.amount_paid or 0
+        return amount_due - payments
 
     def get_item_data(self, entity_slug: str, queryset=None):
         raise NotImplementedError('Must implement get_account_balance_data method.')
@@ -279,7 +271,7 @@ class LedgerPlugInMixIn(models.Model):
     def split_amount(self, amount: float, unit_split: dict, account_uuid, account_balance_type) -> dict:
         running_alloc = 0
         SPLIT_LEN = len(unit_split) - 1
-        split_results = dict()
+        split_results = {}
         for i, (u, p) in enumerate(unit_split.items()):
             if i == SPLIT_LEN:
                 split_results[(account_uuid, u, account_balance_type)] = amount - running_alloc
@@ -306,7 +298,7 @@ class LedgerPlugInMixIn(models.Model):
         self.paid = True
         self.progress = Decimal.from_float(1.0)
         self.amount_paid = self.amount_due
-        paid_dt = localdate() if not paid_date else paid_date
+        paid_dt = paid_date if paid_date else localdate()
 
         if not self.paid_date:
             self.paid_date = paid_dt
@@ -431,7 +423,7 @@ class LedgerPlugInMixIn(models.Model):
 
         # tuple ( unit_uuid, total_amount ) sorted by uuid...
         # sorting before group by...
-        ua_gen = list((k[1], v) for k, v in progress_item_idx.items())
+        ua_gen = [(k[1], v) for k, v in progress_item_idx.items()]
         ua_gen.sort(key=lambda a: str(a[0]) if a[0] else '')
 
         unit_amounts = {
@@ -444,11 +436,11 @@ class LedgerPlugInMixIn(models.Model):
             k: (v / total_amount) if progress and total_amount else Decimal('0.00') for k, v in unit_amounts.items()
         }
 
-        if not void:
-            new_state = self.new_state(commit=commit)
-        else:
-            new_state = self.void_state(commit=commit)
-
+        new_state = (
+            self.void_state(commit=commit)
+            if void
+            else self.new_state(commit=commit)
+        )
         amount_paid_split = self.split_amount(
             amount=new_state['amount_paid'],
             unit_split=unit_percents,
@@ -468,8 +460,8 @@ class LedgerPlugInMixIn(models.Model):
             account_balance_type='credit'
         )
 
-        new_ledger_state = dict()
-        new_ledger_state.update(amount_paid_split)
+        new_ledger_state = {}
+        new_ledger_state |= amount_paid_split
         new_ledger_state.update(amount_prepaid_split)
         new_ledger_state.update(amount_unearned_split)
 
@@ -492,8 +484,8 @@ class LedgerPlugInMixIn(models.Model):
             JournalEntryModel = lazy_loader.get_journal_entry_model()
             TransactionModel = lazy_loader.get_transaction_model()
 
-            unit_uuids = list(set(k[1] for k in idx_keys))
-            now_date = localdate() if not je_date else je_date
+            unit_uuids = list({k[1] for k in idx_keys})
+            now_date = je_date if je_date else localdate()
             je_list = {
                 u: JournalEntryModel(
                     entity_unit_id=u,
@@ -507,7 +499,7 @@ class LedgerPlugInMixIn(models.Model):
                 ) for u in unit_uuids
             }
 
-            for u, je in je_list.items():
+            for je in je_list.values():
                 je.clean(verify_txs=False)
 
             JournalEntryModel.objects.bulk_create(
@@ -568,9 +560,7 @@ class LedgerPlugInMixIn(models.Model):
 
     def due_in_days(self):
         td = self.due_date - localdate()
-        if td.days < 0:
-            return 0
-        return td.days
+        return max(td.days, 0)
 
     def is_past_due(self):
         return not self.paid if self.paid else self.due_date < localdate()
@@ -673,9 +663,7 @@ class MarkdownNotesMixIn(models.Model):
         abstract = True
 
     def notes_html(self):
-        if not self.markdown_notes:
-            return ''
-        return markdown(force_str(self.markdown_notes))
+        return markdown(force_str(self.markdown_notes)) if self.markdown_notes else ''
 
 
 class NodeTreeMixIn(models.Model):

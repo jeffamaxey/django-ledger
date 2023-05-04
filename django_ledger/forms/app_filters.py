@@ -30,14 +30,16 @@ class EntityFilterForm(Form):
 
 class ActivityFilterForm(Form):
     CHOICES = [('all', _l('All'))] + JournalEntryModel.ACTIVITIES
-    activity = ChoiceField(choices=CHOICES,
-                           label=_l('Activity'),
-                           initial='all',
-                           widget=Select(
-                               attrs={
-                                   'class': DJANGO_LEDGER_FORM_INPUT_CLASSES + ' is-small djetler-activity-select-form-input',
-                               }
-                           ))
+    activity = ChoiceField(
+        choices=CHOICES,
+        label=_l('Activity'),
+        initial='all',
+        widget=Select(
+            attrs={
+                'class': f'{DJANGO_LEDGER_FORM_INPUT_CLASSES} is-small djetler-activity-select-form-input'
+            }
+        ),
+    )
 
 
 class AsOfDateFilterForm(Form):

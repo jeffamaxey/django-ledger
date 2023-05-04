@@ -37,7 +37,7 @@ class TransactionQuerySet(models.QuerySet):
         )
 
     def for_accounts(self, account_list: List[str or AccountModel]):
-        if len(account_list) > 0 and isinstance(account_list[0], str):
+        if account_list and isinstance(account_list[0], str):
             return self.filter(account__code__in=account_list)
         return self.filter(account__in=account_list)
 
@@ -75,9 +75,9 @@ class TransactionModelAdmin(models.Manager):
                    entity_slug: str = None):
 
         if not entity_model and not entity_slug:
-            raise ValueError(f'None entity_model or entity_slug were provided.')
+            raise ValueError('None entity_model or entity_slug were provided.')
         elif entity_model and entity_slug:
-            raise ValueError(f'Must pass either entity_model or entity_slug, not both.')
+            raise ValueError('Must pass either entity_model or entity_slug, not both.')
 
         qs = self.for_user(user_model=user_model)
         if entity_model and isinstance(entity_model, EntityModel):
@@ -91,9 +91,9 @@ class TransactionModelAdmin(models.Manager):
                    ledger_pk: str = None):
 
         if not ledger_model and not ledger_pk:
-            raise ValueError(f'None leger_model or ledger_slug were provided.')
+            raise ValueError('None leger_model or ledger_slug were provided.')
         elif ledger_model and ledger_pk:
-            raise ValueError(f'Must pass either ledger_model or ledger_slug, not both.')
+            raise ValueError('Must pass either ledger_model or ledger_slug, not both.')
 
         qs = self.for_user(user_model=user_model)
         if ledger_model and isinstance(ledger_model, LedgerModel):
@@ -108,9 +108,9 @@ class TransactionModelAdmin(models.Manager):
                  unit_slug: str = None):
 
         if not unit_model and not unit_slug:
-            raise ValueError(f'None unit_model or unit_slug were provided.')
+            raise ValueError('None unit_model or unit_slug were provided.')
         elif unit_model and unit_slug:
-            raise ValueError(f'Must pass either unit_model or unit_slug, not both.')
+            raise ValueError('Must pass either unit_model or unit_slug, not both.')
 
         qs = self.for_entity(user_model=user_model, entity_slug=entity_slug)
 

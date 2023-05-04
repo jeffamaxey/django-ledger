@@ -37,7 +37,7 @@ def generate_bill_number(length: int = 10, prefix: bool = True) -> str:
     """
     bill_number = ''.join(choices(BILL_NUMBER_CHARS, k=length))
     if prefix:
-        bill_number = 'B-' + bill_number
+        bill_number = f'B-{bill_number}'
     return bill_number
 
 

@@ -22,8 +22,7 @@ UserModel = get_user_model()
 def get_coa_account(coa_model, code):
     try:
         qs = coa_model.acc_assignments.available()
-        acc_model = qs.get(account__code__iexact=code)
-        return acc_model
+        return qs.get(account__code__iexact=code)
     except ObjectDoesNotExist:
         raise ValueError(
             'Account {acc} is either not assigned, inactive, locked or non existent for CoA: {coa}'.format(

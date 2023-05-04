@@ -7,6 +7,7 @@ Miguel Sanda <msanda@arrobalytics.com>
 Michael Noel <noel.michael87@gmail.com>
 """
 
+
 from django.forms import ModelForm, modelformset_factory, BaseModelFormSet, TextInput, Select, HiddenInput
 
 from django_ledger.io import balance_tx_data
@@ -16,7 +17,12 @@ from django_ledger.models.transactions import TransactionModel
 from django_ledger.settings import DJANGO_LEDGER_FORM_INPUT_CLASSES
 
 
+
+
 class TransactionModelForm(ModelForm):
+
+
+
     class Meta:
         model = TransactionModel
         fields = [
@@ -27,21 +33,19 @@ class TransactionModelForm(ModelForm):
             'description'
         ]
         widgets = {
-            'journal_entry': HiddenInput(attrs={
-                'readonly': True
-            }),
-            'account': Select(attrs={
-                'class': DJANGO_LEDGER_FORM_INPUT_CLASSES + ' is-small',
-            }),
-            'tx_type': Select(attrs={
-                'class': DJANGO_LEDGER_FORM_INPUT_CLASSES + ' is-small',
-            }),
-            'amount': TextInput(attrs={
-                'class': DJANGO_LEDGER_FORM_INPUT_CLASSES + ' is-small',
-            }),
-            'description': TextInput(attrs={
-                'class': DJANGO_LEDGER_FORM_INPUT_CLASSES + ' is-small',
-            }),
+            'journal_entry': HiddenInput(attrs={'readonly': True}),
+            'account': Select(
+                attrs={'class': f'{DJANGO_LEDGER_FORM_INPUT_CLASSES} is-small'}
+            ),
+            'tx_type': Select(
+                attrs={'class': f'{DJANGO_LEDGER_FORM_INPUT_CLASSES} is-small'}
+            ),
+            'amount': TextInput(
+                attrs={'class': f'{DJANGO_LEDGER_FORM_INPUT_CLASSES} is-small'}
+            ),
+            'description': TextInput(
+                attrs={'class': f'{DJANGO_LEDGER_FORM_INPUT_CLASSES} is-small'}
+            ),
         }
 
 

@@ -52,12 +52,15 @@ def diff_tx_data(tx_data: list, raise_exception: bool = True):
     is_valid = (CREDITS == DEBITS)
     diff = CREDITS - DEBITS
 
-    if not is_valid and abs(diff) > DJANGO_LEDGER_TRANSACTION_MAX_TOLERANCE:
-        if raise_exception:
-            raise TransactionNotInBalanceException(
-                f'Invalid tx data. Credits and debits must match. Currently cr: {CREDITS}, db {DEBITS}.'
-                f'Max Tolerance {DJANGO_LEDGER_TRANSACTION_MAX_TOLERANCE}'
-            )
+    if (
+        not is_valid
+        and abs(diff) > DJANGO_LEDGER_TRANSACTION_MAX_TOLERANCE
+        and raise_exception
+    ):
+        raise TransactionNotInBalanceException(
+            f'Invalid tx data. Credits and debits must match. Currently cr: {CREDITS}, db {DEBITS}.'
+            f'Max Tolerance {DJANGO_LEDGER_TRANSACTION_MAX_TOLERANCE}'
+        )
 
     return IS_TX_MODEL, is_valid, diff
 
@@ -73,9 +76,10 @@ def balance_tx_data(tx_data: list, perform_correction: bool = True) -> bool:
         while not is_valid:
 
             tx_type_choice = choice(['debit', 'credit'])
-            txs_candidates = list(tx for tx in tx_data if tx.tx_type == tx_type_choice)
-            if len(txs_candidates) > 0:
-                tx = choice(list(tx for tx in tx_data if tx.tx_type == tx_type_choice))
+            if txs_candidates := [
+                tx for tx in tx_data if tx.tx_type == tx_type_choice
+            ]:
+                tx = choice([tx for tx in tx_data if tx.tx_type == tx_type_choice])
 
                 if any([diff > 0 and tx_type_choice == 'debit',
                         diff < 0 and tx_type_choice == 'credit']):
@@ -100,9 +104,7 @@ def validate_io_date(dt: str or date or datetime, no_parse_locadate: bool = True
     if isinstance(dt, date):
         return dt
     elif isinstance(dt, datetime):
-        if is_naive(dt):
-            return make_aware(dt).date
-        return dt.date
+        return make_aware(dt).date if is_naive(dt) else dt.date
     elif isinstance(dt, str):
         # try to parse a date object from string...
         fdt = parse_date(dt)
@@ -146,11 +148,11 @@ def validate_activity(activity: str, raise_404: bool = False):
             raise exception
 
         valid = activity in JournalEntryModel.ACTIVITY_ALLOWS
-        if activity and not valid:
-            exception = ValidationError(f'{activity} is invalid. Choices are {JournalEntryModel.ACTIVITY_ALLOWS}.')
-            if raise_404:
-                raise Http404(exception)
-            raise exception
+    if activity and not valid:
+        exception = ValidationError(f'{activity} is invalid. Choices are {JournalEntryModel.ACTIVITY_ALLOWS}.')
+        if raise_404:
+            raise Http404(exception)
+        raise exception
 
     return activity
 

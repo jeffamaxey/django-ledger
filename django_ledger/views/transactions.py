@@ -35,16 +35,17 @@ class TXSJournalEntryView(LoginRequiredMixIn, TemplateView):
 
     def get_context_data(self, txs_formset=None, **kwargs):
         context = super(TXSJournalEntryView, self).get_context_data(**kwargs)
-        if not txs_formset:
-            context['txs_formset'] = TransactionModelFormSet(
+        context['txs_formset'] = (
+            txs_formset
+            if txs_formset
+            else TransactionModelFormSet(
                 user_model=self.request.user,
                 je_pk=self.kwargs['je_pk'],
                 ledger_pk=self.kwargs['ledger_pk'],
                 entity_slug=self.kwargs['entity_slug'],
-                queryset=self.get_queryset()
+                queryset=self.get_queryset(),
             )
-        else:
-            context['txs_formset'] = txs_formset
+        )
         return context
 
     def post(self, request, **kwargs):

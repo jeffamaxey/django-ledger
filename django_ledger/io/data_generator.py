@@ -86,7 +86,7 @@ class EntityDataGenerator:
         self.PRODUCTS_MAX = 40
 
     def create_entity_units(self, nb_units: int = None):
-        nb_units = self.NB_UNITS if not nb_units else nb_units
+        nb_units = nb_units if nb_units else self.NB_UNITS
 
         if nb_units:
             assert nb_units >= 0, 'Number of unite must be greater than 0'
@@ -254,11 +254,14 @@ class EntityDataGenerator:
                 item_id=generate_random_item_id(),
                 entity=self.entity_model,
                 for_inventory=True,
-                is_product_or_service=True if random() > 0.6 else False,
+                is_product_or_service=random() > 0.6,
                 earnings_account=choice(self.accounts_by_role[INCOME_SALES]),
                 cogs_account=choice(self.accounts_by_role[COGS]),
-                inventory_account=choice(self.accounts_by_role[ASSET_CA_INVENTORY]),
-            ) for _ in range(inv_count)
+                inventory_account=choice(
+                    self.accounts_by_role[ASSET_CA_INVENTORY]
+                ),
+            )
+            for _ in range(inv_count)
         ]
 
         for i in inventory_models:
@@ -367,9 +370,7 @@ class EntityDataGenerator:
                 fulfilled_dt = po_date + timedelta(days=randint(4, 10))
                 bill_dt = po_date + timedelta(days=randint(1, 3))
 
-                if bill_dt > ldt:
-                    bill_dt = ldt
-
+                bill_dt = min(bill_dt, ldt)
                 bill_model: BillModel = BillModel(
                     bill_number=f'Bill for {po_model.po_number}',
                     date=bill_dt,
@@ -384,8 +385,7 @@ class EntityDataGenerator:
                 bill_model.paid = True
 
                 paid_date = bill_dt + timedelta(days=1)
-                if paid_date > ldt:
-                    paid_date = ldt
+                paid_date = min(paid_date, ldt)
                 bill_model.paid_date = paid_date
 
                 bill_model.cash_account = choice(self.accounts_by_role[ASSET_CA_CASH])
@@ -456,9 +456,9 @@ class EntityDataGenerator:
             user_model=self.user_model,
             post_ledger=True)
 
-        invoice_items = list()
+        invoice_items = []
 
-        for i in range(randint(1, 10)):
+        for _ in range(randint(1, 10)):
             item_model: ItemModel = choice(self.product_models)
             quantity = Decimal.from_float(round(random() * randint(1, 5), 2))
             entity_unit = choice(self.entity_unit_models) if random() > .75 else None
@@ -468,11 +468,7 @@ class EntityDataGenerator:
 
             if item_model.for_inventory and item_model.is_product_or_service:
                 if item_model.inventory_received is not None and item_model.inventory_received > 0.0:
-
-                    if quantity > item_model.inventory_received:
-                        quantity = item_model.inventory_received
-
-                        # reducing inventory qty...
+                    quantity = min(quantity, item_model.inventory_received)
                     item_model.inventory_received -= quantity
                     item_model.inventory_received_value -= avg_cost * quantity
                     unit_cost = avg_cost * margin
@@ -569,9 +565,7 @@ class EntityDataGenerator:
         for i in range(self.tx_quantity):
 
             issue_dttm = self.start_date + timedelta(days=randint(0, self.DAYS_FORWARD))
-            if issue_dttm > self.localtime:
-                issue_dttm = self.localtime
-
+            issue_dttm = min(issue_dttm, self.localtime)
             is_accruable = random() < self.is_accruable_probability
             progress = Decimal(round(random(), 2)) if is_accruable else 0
 

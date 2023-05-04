@@ -171,9 +171,9 @@ class InvoiceItemForm(ModelForm):
 
     def clean(self):
         cleaned_data = super(InvoiceItemForm, self).clean()
-        quantity = cleaned_data['quantity']
         if self.instance.item_model_id:
             item_model: ItemModel = self.instance.item_model
+            quantity = cleaned_data['quantity']
             if item_model.for_inventory and quantity > item_model.inventory_received:
                 raise ValidationError(f'Cannot invoice more than {item_model.inventory_received} units available.')
         return cleaned_data
@@ -224,14 +224,15 @@ class BaseInvoiceItemFormset(BaseModelFormSet):
             form.fields['item_model'].queryset = items_qs
 
     def get_queryset(self):
-        if not self.queryset:
-            self.queryset = ItemThroughModel.objects.for_invoice(
+        self.queryset = (
+            self.INVOICE_MODEL.itemthroughmodel_set.all()
+            if self.queryset
+            else ItemThroughModel.objects.for_invoice(
                 entity_slug=self.ENTITY_SLUG,
                 user_model=self.USER_MODEL,
-                invoice_pk=self.INVOICE_MODEL.uuid
+                invoice_pk=self.INVOICE_MODEL.uuid,
             )
-        else:
-            self.queryset = self.INVOICE_MODEL.itemthroughmodel_set.all()
+        )
         return self.queryset
 
     def get_form_kwargs(self, index):

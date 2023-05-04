@@ -37,7 +37,9 @@ class EntityModelCreateForm(ModelForm):
             populate_coa,
             activate_all_accounts
         ]):
-            raise ValidationError(f'Filling sample data requires using default CoA and activate all accounts.')
+            raise ValidationError(
+                'Filling sample data requires using default CoA and activate all accounts.'
+            )
         validate_cszc(self.cleaned_data)
 
     class Meta:

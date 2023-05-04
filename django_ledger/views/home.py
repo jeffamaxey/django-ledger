@@ -17,9 +17,11 @@ from django_ledger.views.mixins import LoginRequiredMixIn
 class RootUrlView(RedirectView):
 
     def get_redirect_url(self, *args, **kwargs):
-        if not self.request.user.is_authenticated:
-            return reverse('django_ledger:login')
-        return reverse('django_ledger:home')
+        return (
+            reverse('django_ledger:home')
+            if self.request.user.is_authenticated
+            else reverse('django_ledger:login')
+        )
 
 
 class DasboardView(LoginRequiredMixIn, ListView):

@@ -6,6 +6,7 @@ Contributions to this module:
 Miguel Sanda <msanda@arrobalytics.com>
 """
 
+
 import sys
 from collections import defaultdict
 
@@ -234,10 +235,12 @@ ACCOUNT_ROLES = [
      )
 ]
 
-ROLE_TUPLES = sum([[(r[0].lower(), s[0]) for s in r[1]] for r in ACCOUNT_ROLES], list())
+ROLE_TUPLES = sum(
+    ([(r[0].lower(), s[0]) for s in r[1]] for r in ACCOUNT_ROLES), []
+)
 ROLE_DICT = dict([(t[0].lower(), [r[0] for r in t[1]]) for t in ACCOUNT_ROLES])
 VALID_ROLES = [r[1] for r in ROLE_TUPLES]
-BS_ROLES = dict((r[1], r[0]) for r in ROLE_TUPLES)
+BS_ROLES = {r[1]: r[0] for r in ROLE_TUPLES}
 
 
 def validate_roles(roles):
@@ -252,16 +255,14 @@ def validate_roles(roles):
 
 
 ROLES_VARS = locals().keys()
-ROLES_DIRECTORY = dict()
 ROLES_CATEGORIES = ['ASSET', 'LIABILITY', 'EQUITY', 'INCOME', 'COGS', 'EXPENSE']
-for cat in ROLES_CATEGORIES:
-    ROLES_DIRECTORY[cat] = [c for c in ROLES_VARS if c.split('_')[0] == cat]
-
+ROLES_DIRECTORY = {
+    cat: [c for c in ROLES_VARS if c.split('_')[0] == cat]
+    for cat in ROLES_CATEGORIES
+}
 ROLES_GROUPS = [g for g in ROLES_VARS if g.split('_')[0] == 'GROUP']
 
-GROUPS_DIRECTORY = dict()
-for group in ROLES_GROUPS:
-    GROUPS_DIRECTORY[group] = getattr(mod, group)
+GROUPS_DIRECTORY = {group: getattr(mod, group) for group in ROLES_GROUPS}
 
 
 class RoleManager:
@@ -277,15 +278,15 @@ class RoleManager:
         self.DIGEST = tx_digest
         self.ACCOUNTS = tx_digest['accounts']
 
-        self.ROLES_ACCOUNTS = dict()
-        self.ROLES_BALANCES = dict()
+        self.ROLES_ACCOUNTS = {}
+        self.ROLES_BALANCES = {}
 
         if self.BY_PERIOD:
-            self.ROLES_BALANCES_BY_PERIOD = defaultdict(lambda: dict())
+            self.ROLES_BALANCES_BY_PERIOD = defaultdict(lambda: {})
         if self.BY_UNIT:
-            self.ROLES_BALANCES_BY_UNIT = defaultdict(lambda: dict())
+            self.ROLES_BALANCES_BY_UNIT = defaultdict(lambda: {})
         if self.BY_PERIOD and self.BY_UNIT:
-            self.ROLES_BALANCES_BY_PERIOD_AND_UNIT = defaultdict(lambda: dict())
+            self.ROLES_BALANCES_BY_PERIOD_AND_UNIT = defaultdict(lambda: {})
 
         self.DIGEST['role_account'] = None
         self.DIGEST['role_balance'] = None
@@ -343,16 +344,16 @@ class GroupManager:
         self.DIGEST = tx_digest
         self.ACCOUNTS = tx_digest['accounts']
 
-        self.GROUPS_ACCOUNTS = dict()
-        self.GROUPS_BALANCES = dict()
+        self.GROUPS_ACCOUNTS = {}
+        self.GROUPS_BALANCES = {}
         if self.BY_PERIOD:
-            self.GROUPS_BALANCES_BY_PERIOD = defaultdict(lambda: dict())
+            self.GROUPS_BALANCES_BY_PERIOD = defaultdict(lambda: {})
 
         if self.BY_UNIT:
-            self.GROUPS_BALANCES_BY_UNIT = defaultdict(lambda: dict())
+            self.GROUPS_BALANCES_BY_UNIT = defaultdict(lambda: {})
 
         if self.BY_PERIOD and self.BY_UNIT:
-            self.GROUPS_BALANCES_BY_PERIOD_AND_UNIT = defaultdict(lambda: dict())
+            self.GROUPS_BALANCES_BY_PERIOD_AND_UNIT = defaultdict(lambda: {})
 
         self.DIGEST['group_account'] = None
         self.DIGEST['group_balance'] = None
@@ -370,7 +371,7 @@ class GroupManager:
             self.DIGEST['group_balance_by_period'] = self.GROUPS_BALANCES_BY_PERIOD
         if self.BY_UNIT:
             self.DIGEST['group_balance_by_unit'] = self.GROUPS_BALANCES_BY_UNIT
-        if self.BY_PERIOD and self.BY_PERIOD:
+        if self.BY_PERIOD:
             self.DIGEST['group_balance_by_period_and_unit'] = self.GROUPS_BALANCES_BY_PERIOD_AND_UNIT
         return self.DIGEST
 

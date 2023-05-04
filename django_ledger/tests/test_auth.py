@@ -16,7 +16,7 @@ class AuthTest(DjangoLedgerBaseTest):
     def test_user_is_redirected(self):
         for test_url in self.TEST_URLS:
             response = self.client.get(test_url, follow=False)
-            login_url = LOGIN_URL + f'?next={test_url}'
+            login_url = f'{LOGIN_URL}?next={test_url}'
             self.assertRedirects(response, expected_url=login_url)
 
     def test_login_form(self):
@@ -26,10 +26,11 @@ class AuthTest(DjangoLedgerBaseTest):
         self.assertContains(response, text='id="djl-el-login-form-password-field"', status_code=200, count=1)
 
     def test_user_with_wrong_credentials(self):
-        response = self.client.post(LOGIN_URL, data={
-            'username': self.USERNAME,
-            'password': self.PASSWORD + '1',
-        }, follow=False)
+        response = self.client.post(
+            LOGIN_URL,
+            data={'username': self.USERNAME, 'password': f'{self.PASSWORD}1'},
+            follow=False,
+        )
         self.assertContains(response, text='Login', status_code=200)
         self.assertFormError(response,
                              field=None,
@@ -38,10 +39,11 @@ class AuthTest(DjangoLedgerBaseTest):
                                  'Please enter a correct username and password. Note that both fields may be case-sensitive.'
                              ])
 
-        response = self.client.post(LOGIN_URL, data={
-            'username': self.USERNAME + 'abc',
-            'password': self.PASSWORD,
-        }, follow=False)
+        response = self.client.post(
+            LOGIN_URL,
+            data={'username': f'{self.USERNAME}abc', 'password': self.PASSWORD},
+            follow=False,
+        )
         self.assertContains(response, text='Login', status_code=200)
         self.assertFormError(response,
                              field=None,

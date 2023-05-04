@@ -39,7 +39,7 @@ def generate_invoice_number(length: int = 10, prefix: bool = True) -> str:
     """
     invoice_number = ''.join(choices(INVOICE_NUMBER_CHARS, k=length))
     if prefix:
-        invoice_number = 'I-' + invoice_number
+        invoice_number = f'I-{invoice_number}'
     return invoice_number
 
 

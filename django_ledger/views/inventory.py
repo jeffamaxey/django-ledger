@@ -67,11 +67,9 @@ class InventoryRecountView(LoginRequiredMixIn, DetailView):
     def recorded_inventory(self, queryset=None, as_values=True):
         entity_model: EntityModel = self.get_object()
         user_model = self.request.user
-        recorded_qs = entity_model.recorded_inventory(
-            user_model=user_model,
-            queryset=queryset
+        return entity_model.recorded_inventory(
+            user_model=user_model, queryset=queryset
         )
-        return recorded_qs
 
     def get_context_data(self, adjustment=None, counted_qs=None, recorded_qs=None, **kwargs):
         self.object = self.get_object()
@@ -79,9 +77,13 @@ class InventoryRecountView(LoginRequiredMixIn, DetailView):
         context['page_title'] = _('Inventory Recount')
         context['header_title'] = _('Inventory Recount')
 
-        recorded_qs = self.recorded_inventory() if not recorded_qs else recorded_qs
-        counted_qs = self.counted_inventory() if not counted_qs else counted_qs
-        adjustment = inventory_adjustment(counted_qs, recorded_qs) if not adjustment else adjustment
+        recorded_qs = recorded_qs if recorded_qs else self.recorded_inventory()
+        counted_qs = counted_qs if counted_qs else self.counted_inventory()
+        adjustment = (
+            adjustment
+            if adjustment
+            else inventory_adjustment(counted_qs, recorded_qs)
+        )
 
         context['count_inventory_received'] = counted_qs
         context['current_inventory_levels'] = recorded_qs
@@ -91,9 +93,7 @@ class InventoryRecountView(LoginRequiredMixIn, DetailView):
 
     def get(self, request, *args, **kwargs):
 
-        confirm = self.request.GET.get('confirm')
-
-        if confirm:
+        if confirm := self.request.GET.get('confirm'):
             try:
                 confirm = int(confirm)
             except TypeError:
@@ -106,8 +106,8 @@ class InventoryRecountView(LoginRequiredMixIn, DetailView):
             messages.add_message(
                 request,
                 level=messages.INFO,
-                message=f'Successfully updated recorded inventory.',
-                extra_tags='is-success'
+                message='Successfully updated recorded inventory.',
+                extra_tags='is-success',
             )
             return HttpResponseRedirect(
                 redirect_to=reverse('django_ledger:inventory-recount',
